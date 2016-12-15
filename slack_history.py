@@ -5,6 +5,7 @@ import os
 import shutil
 import copy
 from datetime import datetime
+import sys
 
 
 # This script finds all channels, private channels and direct messages
@@ -128,6 +129,9 @@ def parseMessages(parentDir, roomDir, messages, roomType):
 # fetch and write history for all public channels
 def getChannels(slack, dryRun):
     channels = slack.channels.list().body['channels']
+    getChannels2(slack, dryRun, channels)
+
+def getChannels2(slack, dryRun, channels):
 
     print("\nfound channels: ")
     for channel in channels:
@@ -273,6 +277,12 @@ if __name__ == "__main__":
         default=False,
         help="skip fetching history for directMessages")
 
+    parser.add_argument(
+        '--channel',
+        action='store',
+        default=False,
+        help="name of the channel to export")
+
     args = parser.parse_args()
 
     slack = Slacker(args.token)
@@ -281,12 +291,26 @@ if __name__ == "__main__":
 
     userIdNameMap = getUserMap(slack)
 
+    if args.channel:
+        channels = slack.channels.list().body['channels']
+        channel = None
+
+        for c in channels:
+            if c['name'] == args.channel:
+                channel = c
+        if channel:
+            getChannels2(slack, False, [channel])
+        else:
+            print "Unable to find %s" % args.channel
+        sys.exit(0)
+
     dryRun = args.dryRun
 
     if not dryRun:
         # write channel and user jsons
         dumpUserFile(slack)
         dumpChannelFile(slack)
+
 
     if not args.skipChannels:
         getChannels(slack, dryRun)
